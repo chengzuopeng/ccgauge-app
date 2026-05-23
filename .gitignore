@@ -1,0 +1,37 @@
+# ─── SwiftPM ─────────────────────────────────────────────────────────
+.build/
+.swiftpm/
+Package.resolved
+*.xcodeproj/
+
+# ─── App bundle output ──────────────────────────────────────────────
+build/
+
+# ─── Xcode ──────────────────────────────────────────────────────────
+xcuserdata/
+DerivedData/
+*.xcuserstate
+
+# ─── macOS ──────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+
+# ─── Logs / temp ────────────────────────────────────────────────────
+*.log
+*.tmp
+*.bak
+
+# ─── Reference materials (not part of the app source) ───────────────
+# Contains app-design.md, ccgauge-app-design/ (HTML prototypes),
+# ccgauge-refer/ (npm package source), and data-get.md.
+# Big and provider-license-encumbered — kept locally for development
+# reference only; not redistributed via this repo.
+refers/
+
+# ─── Editor / IDE local config ──────────────────────────────────────
+.vscode/
+.idea/
+.cursor/
+.claude/
