@@ -38,33 +38,23 @@ make clean
 ├── Info.plist               # bundle 元信息（LSUIElement=true）
 ├── Makefile                 # build + bundle + run
 ├── Sources/CCGaugeBar/
-│   ├── CCGaugeBarApp.swift          # @main + AppDelegate
-│   ├── Models/                      # AssistantRecord / Pricing / Range
-│   ├── Parsers/                     # Claude / Codex JSONL parsers
+│   ├── CCGaugeBarApp.swift          # @main + AppDelegate（NSStatusItem + NSPopover）
+│   ├── Models/                      # AssistantRecord / Pricing / Range / ParentLink
+│   ├── Parsers/                     # Claude / Codex JSONL parsers + Dedup + ProjectLabel
 │   ├── Domain/                      # Turns / Aggregator / Serialize
-│   ├── Data/                        # ScanStore + FileWatcher
-│   ├── ViewModel/                   # PopoverViewModel + Localization
+│   ├── Data/                        # ScanEngine actor + ScanStore + FileWatcher (FSEvents)
+│   │                                # + ScanIndexPersistence (磁盘 cache) + PerfLog
+│   ├── ViewModel/                   # PopoverViewModel + Localization (en/zh)
 │   ├── UI/
-│   │   ├── PopoverShell.swift       # 总外壳
-│   │   ├── Header.swift / Footer.swift
-│   │   ├── Banner.swift             # CLI 升级提示（v1.0 占位）
-│   │   ├── Overview/                # 概览页 5 个块
-│   │   ├── Usage/                   # 用量页
+│   │   ├── PopoverShell.swift       # 总外壳 + 四态分发
+│   │   ├── Header.swift / Footer.swift / Theme.swift / Formatters.swift / Icons.swift
+│   │   ├── Overview/                # 概览页：ProviderRow / RangeBar / KpiGrid / TrendChart / DistributionRow
+│   │   ├── Usage/                   # 用量页：UsagePage / UsageRow / TokenBreakdownTip
 │   │   ├── State/                   # 骨架 / 空 / 错误 / 欢迎
-│   │   ├── Settings/                # 偏好设置窗
-│   │   ├── Theme.swift / Formatters.swift / Icons.swift
-│   │   └── Resources/               # 图标 / favicon（bundle 资源）
-│   └── ...
-└── Tests/CCGaugeBarTests/
-    └── ...
+│   │   └── Settings/                # 偏好设置窗（General / Data / About）
+│   └── Resources/                   # 图标 / favicon（SwiftPM bundle 资源）
+└── Tests/CCGaugeBarTests/           # 单测：Pricing / Range / Format
 ```
-
-## 设计 & 数据文档
-
-- [`app-design.md`](app-design.md) — 设计稿、交互、视觉 token、组件结构。
-- [`data-get.md`](data-get.md) — 取数与计算逻辑、JSONL schema、Swift 实现要点。
-- [`ccgauge-app-design/`](ccgauge-app-design/) — Claude Design 导出的 HTML/CSS/JSX 原型。
-- [`ccgauge-refer/`](ccgauge-refer/) — npm 包 `ccgauge@1.0.5` 源码，本工程的算法 1:1 参考。
 
 ## 故障排查
 
