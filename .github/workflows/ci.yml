@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'CHANGELOG.md'
+      - 'LICENSE'
+      - '.gitignore'
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same branch/PR so we don't queue up.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Test + Build (universal)
+    # macos-14 ships Apple Silicon + Xcode 15+ — fast and matches our
+    # local dev machines. macos-13 still works for sanity-checking the
+    # minimum OS target if you ever want to add it as a matrix dim.
+    runs-on: macos-14
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift toolchain info
+        run: |
+          swift --version
+          xcode-select -p
+
+      - name: Run unit tests
+        run: swift test --parallel
+
+      - name: Build release (universal)
+        run: swift build -c release --arch arm64 --arch x86_64
+
+      - name: Bundle .app
+        run: make bundle
+
+      - name: Verify universal binary
+        run: |
+          file build/CCGaugeBar.app/Contents/MacOS/CCGaugeBar | tee /dev/stderr | \
+            grep -q "Mach-O universal binary with 2 architectures"
+
+      - name: Verify hardened runtime
+        run: |
+          codesign -dvv build/CCGaugeBar.app 2>&1 | tee /dev/stderr | \
+            grep -q "runtime"
+
+      - name: Verify app icon is bundled
+        run: test -f build/CCGaugeBar.app/Contents/Resources/AppIcon.icns
+
+      - name: Build DMG
+        run: make dmg
+
+      - name: Upload .app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CCGaugeBar-app
+          path: build/CCGaugeBar.app
+          retention-days: 7
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CCGaugeBar-dmg
+          path: build/ccgauge-bar-*.dmg
+          retention-days: 7

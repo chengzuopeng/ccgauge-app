@@ -146,6 +146,29 @@ dmg: bundle
 	@rm -rf "$(DMG_STAGE)"
 	@echo "==> Built $(DMG_OUT) ($$(du -h "$(DMG_OUT)" | cut -f1))"
 
+# ─── Version bump ─────────────────────────────────────────────────────
+# Info.plist is the single source of truth for the app version. This
+# target updates `CFBundleShortVersionString` and increments the
+# integer build number in one go, so you don't hand-edit XML.
+#
+# Usage: make bump VERSION=1.0.1
+.PHONY: bump
+bump:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "usage: make bump VERSION=<semver>  (e.g. make bump VERSION=1.0.1)"; \
+		exit 2; \
+	fi
+	@/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(VERSION)" $(INFO_PLIST)
+	@CUR_BUILD=$$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" $(INFO_PLIST)); \
+	 NEW_BUILD=$$((CUR_BUILD + 1)); \
+	 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $$NEW_BUILD" $(INFO_PLIST); \
+	 echo "==> Bumped to $(VERSION) (build $$NEW_BUILD)"
+	@echo "==> Next steps:"
+	@echo "    1. Add an entry under '## [$(VERSION)]' in CHANGELOG.md"
+	@echo "    2. git commit -am \"Release $(VERSION)\""
+	@echo "    3. git tag v$(VERSION)"
+	@echo "    4. git push origin main --tags  (release workflow auto-publishes DMG)"
+
 # ─── Clean ─────────────────────────────────────────────────────────────
 .PHONY: clean
 clean:
@@ -170,4 +193,5 @@ help:
 	@echo "  test        — swift test"
 	@echo "  icon        — regenerate Resources/AppIcon.icns"
 	@echo "  dmg         — build a drag-to-install .dmg installer"
+	@echo "  bump VERSION=x.y.z — bump CFBundleShortVersionString + build number"
 	@echo "  clean       — wipe build artifacts"

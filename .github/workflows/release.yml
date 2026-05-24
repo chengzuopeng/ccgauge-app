@@ -1,0 +1,82 @@
+name: Release
+
+# Triggers on annotated tags matching v* (e.g. v1.0.0, v1.1.0-beta).
+# Workflow builds the DMG, then publishes a GitHub Release with the
+# DMG attached and an auto-generated changelog from commit messages.
+#
+# Usage:
+#   1. Edit CHANGELOG.md (add an entry under the new version header)
+#   2. make bump VERSION=1.0.1   # updates Info.plist
+#   3. git commit -am "Release 1.0.1"
+#   4. git tag v1.0.1
+#   5. git push origin main --tags
+#   → CI fires, DMG appears under github.com/<repo>/releases/tag/v1.0.1
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write   # required to create releases
+
+jobs:
+  release:
+    name: Build + publish release
+    runs-on: macos-14
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift toolchain info
+        run: swift --version
+
+      - name: Run unit tests
+        run: swift test --parallel
+
+      - name: Build DMG
+        run: make dmg
+
+      - name: Locate DMG
+        id: locate
+        run: |
+          DMG=$(ls build/ccgauge-bar-*.dmg | head -1)
+          echo "path=$DMG" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "$DMG")" >> "$GITHUB_OUTPUT"
+          echo "Produced: $DMG ($(du -h "$DMG" | cut -f1))"
+
+      - name: Verify tag matches Info.plist version
+        run: |
+          PLIST_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Info.plist)
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          echo "Plist: $PLIST_VERSION, Tag: $TAG_VERSION"
+          if [ "$PLIST_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Tag v$TAG_VERSION does not match Info.plist version $PLIST_VERSION. Run 'make bump VERSION=$TAG_VERSION' first."
+            exit 1
+          fi
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          files: ${{ steps.locate.outputs.path }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          body: |
+            ## Install
+
+            Download `${{ steps.locate.outputs.name }}` below, mount it, and drag
+            **CCGaugeBar.app** to your **Applications** folder.
+
+            **First launch** — ccgauge-bar is ad-hoc signed (no Apple Developer ID),
+            so macOS Gatekeeper will block the first open. Either right-click the
+            app in Finder and choose **Open**, or run:
+            ```bash
+            xattr -dr com.apple.quarantine /Applications/CCGaugeBar.app
+            ```
+            This is a one-time bypass; subsequent launches work normally.
+
+            See the [README](https://github.com/${{ github.repository }}#readme) for
+            full install instructions and the [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
+            for what's new.

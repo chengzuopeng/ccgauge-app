@@ -1,5 +1,9 @@
 # ccgauge-bar
 
+[![CI](https://github.com/chengzuopeng/ccgauge-app/actions/workflows/ci.yml/badge.svg)](https://github.com/chengzuopeng/ccgauge-app/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/chengzuopeng/ccgauge-app?include_prereleases&sort=semver)](https://github.com/chengzuopeng/ccgauge-app/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 macOS 菜单栏 app — Claude Code / Codex CLI 的 token 与费用速览。
 
 - **形态**：常驻菜单栏，单击图标弹 popover（580×720 pt）。
@@ -78,6 +82,27 @@ make help       # 列出全部 target
 │   └── Resources/                   # 图标 / favicon（SwiftPM bundle 资源）
 └── Tests/CCGaugeBarTests/           # 单测：Pricing / Range / Format
 ```
+
+## 发版流程（维护者向）
+
+`Info.plist` 是版本号的唯一权威。`make bump` 帮你免去手编 XML。Release workflow 监听 `v*` tag 自动跑 CI + 打 DMG + 创建 GitHub Release。
+
+```bash
+# 1. 在 CHANGELOG.md 顶部新增一段 ## [1.0.1]，写改动
+$EDITOR CHANGELOG.md
+
+# 2. bump 版本（更新 Info.plist 的 CFBundleShortVersionString + build number）
+make bump VERSION=1.0.1
+
+# 3. 提交 + 打 tag + 推送
+git commit -am "Release 1.0.1"
+git tag v1.0.1
+git push origin main --tags
+
+# → GitHub Actions release.yml 会自动 build + 发布 DMG 到 Releases 页
+```
+
+CI 在每次 push / PR 时跑单测 + universal build + DMG 校验，产物可在 [Actions](https://github.com/chengzuopeng/ccgauge-app/actions) 里下载（保留 7 天）。
 
 ## 故障排查
 
