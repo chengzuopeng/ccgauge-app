@@ -215,9 +215,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     @objc private func menuQuit() { NSApp.terminate(nil) }
 
     func openDashboardURL() {
-        if let url = URL(string: "http://localhost:3737") {
-            NSWorkspace.shared.open(url)
-        }
+        DashboardRouter.openDashboardOrWebsite()
     }
 
     // MARK: settings window

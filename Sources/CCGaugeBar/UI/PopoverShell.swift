@@ -100,9 +100,7 @@ struct PopoverShell: View {
     }
 
     private func openDashboard() {
-        if let url = URL(string: "http://localhost:3737") {
-            NSWorkspace.shared.open(url)
-        }
+        DashboardRouter.openDashboardOrWebsite()
     }
 }
 
