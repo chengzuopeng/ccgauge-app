@@ -1,16 +1,20 @@
 # Makefile — build & run ccgauge-bar as a proper .app bundle
 #
 # Usage:
-#   make            — build release binary
-#   make bundle     — package into build/CCGaugeBar.app
+#   make            — universal release binary (arm64 + x86_64)
+#   make bundle     — package into build/CCGaugeBar.app (with icon + hardened runtime)
 #   make run        — bundle + open the app (status item appears in menubar)
-#   make debug      — debug build (faster compile, slower runtime)
+#   make debug      — debug build (current host arch only, faster compile)
+#   make run-debug  — debug binary, runs attached so logs show in terminal
 #   make test       — run unit tests
+#   make icon       — regenerate Resources/AppIcon.icns from the Swift renderer
 #   make clean      — wipe .build/ and build/
 
 APP_NAME      := CCGaugeBar
 BUNDLE_DIR    := build/$(APP_NAME).app
-RELEASE_BIN   := .build/release/$(APP_NAME)
+# Universal builds land under .build/apple/Products/Release; debug builds
+# stay at .build/debug for the current host arch.
+RELEASE_BIN   := .build/apple/Products/Release/$(APP_NAME)
 DEBUG_BIN     := .build/debug/$(APP_NAME)
 INFO_PLIST    := Info.plist
 RESOURCE_DIR  := Resources
@@ -20,10 +24,14 @@ RESOURCE_DIR  := Resources
 all: build
 
 # ─── Build ─────────────────────────────────────────────────────────────
+# Universal binary (Apple Silicon + Intel). Output goes to
+# .build/apple/Products/Release/$(APP_NAME) — different from the single-arch
+# .build/release/ path that swift defaults to.
 .PHONY: build
 build:
-	swift build -c release
+	swift build -c release --arch arm64 --arch x86_64
 
+# Single-arch debug for fast iteration on the dev machine.
 .PHONY: debug
 debug:
 	swift build -c debug
@@ -31,6 +39,11 @@ debug:
 # ─── Bundle into .app ──────────────────────────────────────────────────
 # SwiftPM produces a bare executable; we wrap it into the standard
 # .app/Contents/{MacOS,Resources} layout macOS expects for menubar apps.
+#
+# Hardened runtime (--options runtime) is required for future notarization
+# and silences the "unverified developer" warning some macOS versions
+# show on ad-hoc-signed apps. We don't ship JIT or DYLD injection, so no
+# runtime exceptions / entitlements are needed.
 .PHONY: bundle
 bundle: build
 	@echo "==> Packaging $(BUNDLE_DIR)"
@@ -43,11 +56,14 @@ bundle: build
 		cp -R "$(RESOURCE_DIR)"/* "$(BUNDLE_DIR)/Contents/Resources/" 2>/dev/null || true; \
 	fi
 	@# SwiftPM copies the resources bundle next to the binary; move it inside the .app
-	@if [ -d ".build/release/$(APP_NAME)_CCGaugeBar.bundle" ]; then \
+	@if [ -d ".build/apple/Products/Release/$(APP_NAME)_CCGaugeBar.bundle" ]; then \
+		cp -R ".build/apple/Products/Release/$(APP_NAME)_CCGaugeBar.bundle" "$(BUNDLE_DIR)/Contents/Resources/"; \
+	elif [ -d ".build/release/$(APP_NAME)_CCGaugeBar.bundle" ]; then \
 		cp -R ".build/release/$(APP_NAME)_CCGaugeBar.bundle" "$(BUNDLE_DIR)/Contents/Resources/"; \
 	fi
-	@codesign --force --deep --sign - "$(BUNDLE_DIR)" 2>/dev/null || true
+	@codesign --force --deep --options runtime --sign - "$(BUNDLE_DIR)" 2>/dev/null || true
 	@echo "==> Built $(BUNDLE_DIR)"
+	@file "$(BUNDLE_DIR)/Contents/MacOS/$(APP_NAME)" | sed 's/^/    /'
 
 # ─── Run ───────────────────────────────────────────────────────────────
 .PHONY: run
@@ -68,6 +84,36 @@ run-debug: debug
 test:
 	swift test
 
+# ─── App icon ──────────────────────────────────────────────────────────
+# Regenerate Resources/AppIcon.icns from the Swift renderer. Only needs to
+# run when the icon design changes — the produced .icns is committed to
+# the repo so cold checkouts can build immediately.
+ICON_SRC      := Tools/generate-app-icon.swift
+ICON_PNG      := build/AppIcon-1024.png
+ICON_SET      := build/AppIcon.iconset
+ICON_OUT      := $(RESOURCE_DIR)/AppIcon.icns
+
+.PHONY: icon
+icon:
+	@echo "==> Rendering $(ICON_PNG)"
+	@mkdir -p build "$(RESOURCE_DIR)"
+	@swift "$(ICON_SRC)" "$(ICON_PNG)"
+	@echo "==> Building $(ICON_SET)"
+	@rm -rf "$(ICON_SET)"
+	@mkdir -p "$(ICON_SET)"
+	@sips -z 16 16     "$(ICON_PNG)" --out "$(ICON_SET)/icon_16x16.png"       >/dev/null
+	@sips -z 32 32     "$(ICON_PNG)" --out "$(ICON_SET)/icon_16x16@2x.png"    >/dev/null
+	@sips -z 32 32     "$(ICON_PNG)" --out "$(ICON_SET)/icon_32x32.png"       >/dev/null
+	@sips -z 64 64     "$(ICON_PNG)" --out "$(ICON_SET)/icon_32x32@2x.png"    >/dev/null
+	@sips -z 128 128   "$(ICON_PNG)" --out "$(ICON_SET)/icon_128x128.png"     >/dev/null
+	@sips -z 256 256   "$(ICON_PNG)" --out "$(ICON_SET)/icon_128x128@2x.png"  >/dev/null
+	@sips -z 256 256   "$(ICON_PNG)" --out "$(ICON_SET)/icon_256x256.png"     >/dev/null
+	@sips -z 512 512   "$(ICON_PNG)" --out "$(ICON_SET)/icon_256x256@2x.png"  >/dev/null
+	@sips -z 512 512   "$(ICON_PNG)" --out "$(ICON_SET)/icon_512x512.png"     >/dev/null
+	@cp "$(ICON_PNG)" "$(ICON_SET)/icon_512x512@2x.png"
+	@iconutil -c icns -o "$(ICON_OUT)" "$(ICON_SET)"
+	@echo "==> Wrote $(ICON_OUT) ($$(du -h "$(ICON_OUT)" | cut -f1))"
+
 # ─── Clean ─────────────────────────────────────────────────────────────
 .PHONY: clean
 clean:
@@ -84,9 +130,11 @@ format:
 .PHONY: help
 help:
 	@echo "Targets:"
-	@echo "  build       — release binary in .build/release/"
-	@echo "  bundle      — wrap into build/CCGaugeBar.app"
+	@echo "  build       — universal release binary (arm64 + x86_64)"
+	@echo "  bundle      — wrap into build/CCGaugeBar.app + icon + hardened runtime"
 	@echo "  run         — bundle + open (foreground)"
+	@echo "  debug       — debug build (current host arch only)"
 	@echo "  run-debug   — debug binary, runs attached so logs show in terminal"
 	@echo "  test        — swift test"
+	@echo "  icon        — regenerate Resources/AppIcon.icns"
 	@echo "  clean       — wipe build artifacts"

@@ -14,6 +14,8 @@
     <string>ccgauge-bar</string>
     <key>CFBundleDisplayName</key>
     <string>ccgauge-bar</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -24,8 +26,12 @@
     <string>13.0</string>
     <key>LSUIElement</key>
     <true/>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.developer-tools</string>
     <key>NSHumanReadableCopyright</key>
-    <string>MIT License. ccgauge-bar reads local JSONL only; no network, no telemetry.</string>
+    <string>Copyright © 2026 chengzuopeng. MIT licensed. ccgauge-bar reads local JSONL only; no network, no telemetry.</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
     <key>NSSupportsAutomaticTermination</key>
     <false/>
     <key>NSSupportsSuddenTermination</key>
