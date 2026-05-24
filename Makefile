@@ -114,6 +114,38 @@ icon:
 	@iconutil -c icns -o "$(ICON_OUT)" "$(ICON_SET)"
 	@echo "==> Wrote $(ICON_OUT) ($$(du -h "$(ICON_OUT)" | cut -f1))"
 
+# ─── DMG installer ────────────────────────────────────────────────────
+# Wrap the .app into a drag-to-install disk image. Uses macOS-stock
+# `hdiutil` so there's no Homebrew dependency. Layout inside the mounted
+# DMG is the conventional "App + alias to /Applications" pair.
+#
+# Output filename embeds the version from Info.plist so successive
+# builds don't clobber each other.
+DMG_VERSION  := $(shell /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" $(INFO_PLIST))
+DMG_VOLNAME  := ccgauge-bar
+DMG_STAGE    := build/dmg-staging
+DMG_OUT      := build/ccgauge-bar-$(DMG_VERSION).dmg
+
+.PHONY: dmg
+dmg: bundle
+	@echo "==> Staging DMG layout (v$(DMG_VERSION))"
+	@rm -rf "$(DMG_STAGE)" "$(DMG_OUT)"
+	@mkdir -p "$(DMG_STAGE)"
+	@cp -R "$(BUNDLE_DIR)" "$(DMG_STAGE)/"
+	@# Drag-to-install alias. ln -s creates a relative symlink that the
+	@# Finder resolves to the user's /Applications when the DMG mounts.
+	@ln -s /Applications "$(DMG_STAGE)/Applications"
+	@echo "==> Creating $(DMG_OUT)"
+	@hdiutil create \
+		-volname "$(DMG_VOLNAME)" \
+		-srcfolder "$(DMG_STAGE)" \
+		-ov \
+		-format UDZO \
+		-fs HFS+ \
+		"$(DMG_OUT)" >/dev/null
+	@rm -rf "$(DMG_STAGE)"
+	@echo "==> Built $(DMG_OUT) ($$(du -h "$(DMG_OUT)" | cut -f1))"
+
 # ─── Clean ─────────────────────────────────────────────────────────────
 .PHONY: clean
 clean:
@@ -137,4 +169,5 @@ help:
 	@echo "  run-debug   — debug binary, runs attached so logs show in terminal"
 	@echo "  test        — swift test"
 	@echo "  icon        — regenerate Resources/AppIcon.icns"
+	@echo "  dmg         — build a drag-to-install .dmg installer"
 	@echo "  clean       — wipe build artifacts"

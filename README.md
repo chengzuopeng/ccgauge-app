@@ -4,28 +4,51 @@ macOS 菜单栏 app — Claude Code / Codex CLI 的 token 与费用速览。
 
 - **形态**：常驻菜单栏，单击图标弹 popover（580×720 pt）。
 - **数据来源**：直接读 `~/.claude/projects/**/*.jsonl` 和 `~/.codex/sessions/**/*.jsonl`。**不联网，不上传，无遥测。**
-- **栈**：Swift 5.10+ + SwiftUI + AppKit；最低 macOS 13。
+- **栈**：Swift 5.10+ + SwiftUI + AppKit；最低 macOS 13。Universal binary（Apple Silicon + Intel）。
 
-## 编译运行
+## 下载安装
+
+去 [Releases](https://github.com/chengzuopeng/ccgauge-app/releases/latest) 下最新的 `ccgauge-bar-*.dmg`，双击挂载后把 **CCGaugeBar.app** 拖到 **Applications**。
+
+### 首次启动：放行 Gatekeeper
+
+本工程是个人项目，目前**未做 Apple Developer ID 公证**（要 $99/年），用的是 ad-hoc 签名。macOS 首次启动会拦截：
+
+> "无法打开 CCGaugeBar，因为 Apple 无法验证其是否包含恶意软件"
+
+任选一种放行方式（**一次性**，之后双击就能直接开）：
+
+- **GUI 方式**：在访达里**右键 → 打开**（不能双击），系统会弹更友好的确认框，点 "打开" 即可
+- **命令行方式**：
+  ```bash
+  xattr -dr com.apple.quarantine /Applications/CCGaugeBar.app
+  ```
+  这条命令去掉 Gatekeeper 的"已隔离"属性
+
+放行成功后，菜单栏右侧会出现 gauge 图标，单击弹 popover。
+
+## 从源码编译
+
+需要 macOS 13+ 和 Xcode Command Line Tools（`xcode-select --install`）。
 
 ```bash
-# 一次性编译并启动
+git clone https://github.com/chengzuopeng/ccgauge-app.git
+cd ccgauge-app
 make run
+```
 
-# 仅编译 release 二进制
-make build
+常用 target：
 
-# 仅打 .app bundle（不启动）
-make bundle
-
-# 开发模式（debug build，前台运行，日志在终端）
-make run-debug
-
-# 单测
-make test
-
-# 清理产物
-make clean
+```bash
+make            # = make build（编译 universal release 二进制）
+make bundle     # 打成 build/CCGaugeBar.app，含 icon 和 hardened runtime
+make run        # bundle + open
+make run-debug  # debug build，前台运行，日志在终端
+make dmg        # 打 build/ccgauge-bar-<version>.dmg 安装包
+make icon       # 重新生成 Resources/AppIcon.icns（设计变了才需要）
+make test       # swift test
+make clean      # 清理 .build/ 和 build/
+make help       # 列出全部 target
 ```
 
 第一次运行：菜单栏右侧会出现 gauge 图标，点一下弹 popover。
