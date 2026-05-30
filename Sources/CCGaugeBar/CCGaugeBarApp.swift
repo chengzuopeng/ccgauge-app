@@ -159,6 +159,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         popover.close()
     }
 
+    // MARK: NSPopoverDelegate — popover visibility notifications
+
+    /// AppKit invokes delegate callbacks on the main thread, which matches
+    /// our @MainActor class — no hop needed. We forward to ScanStore so
+    /// it can resume / pause the background safety-net poll.
+    func popoverDidShow(_ notification: Notification) {
+        scanStore.notifyPopoverVisibility(visible: true)
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        scanStore.notifyPopoverVisibility(visible: false)
+    }
+
     // MARK: right-click context menu
 
     private func showContextMenu() {

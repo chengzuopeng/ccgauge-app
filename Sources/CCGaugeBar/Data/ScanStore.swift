@@ -41,6 +41,12 @@ public final class ScanStore: ObservableObject {
     /// to detect when ~/.claude/projects or ~/.codex/sessions appears after launch
     /// (first-time users who launch ccgauge-bar BEFORE running claude / codex).
     private var watchedDirs: Set<String> = []
+    /// Tracks the most recent time the popover was hidden. When it's been
+    /// hidden long enough (`pollIdleThreshold`), the safety-net poll skips
+    /// — FSEvents still wakes us up on real file changes, but we stop
+    /// burning CPU on speculative full-dir enumerations the user can't
+    /// see anyway. Resumes immediately when the popover opens again.
+    private var popoverHiddenSince: Date?
 
     private static let rescanDebounceNs: UInt64 = 250_000_000
     private static let snapshotDebounceNs: UInt64 = 120_000_000
@@ -50,6 +56,10 @@ public final class ScanStore: ObservableObject {
     /// generous 5-minute fallback poll for missed-event safety.
     private static let pollIntervalEmpty: TimeInterval = 30
     private static let pollIntervalReady: TimeInterval = 300
+    /// Skip safety-net polls when the popover has been hidden for at least
+    /// this long. FSEvents still drives real-time updates, so the user
+    /// never sees stale data when they reopen.
+    private static let pollIdleThreshold: TimeInterval = 300
 
     nonisolated public init() {}
 
@@ -72,6 +82,30 @@ public final class ScanStore: ObservableObject {
     public func scanNow(force: Bool = false) async {
         enqueueFullScan(force: force, showStatus: true)
         await drainTask?.value
+    }
+
+    /// Called by AppDelegate when the popover shows / hides. Lets the
+    /// store skip the background poll while the user can't see anything
+    /// (FSEvents still drives real-time updates) and trigger a fresh
+    /// scan + reset the poll clock when the user reopens the popover.
+    public func notifyPopoverVisibility(visible: Bool) {
+        if visible {
+            let hiddenFor = popoverHiddenSince.map { Date().timeIntervalSince($0) } ?? 0
+            popoverHiddenSince = nil
+            // Only fire a catch-up scan when there's actually a reason —
+            // a previous unconditional enqueueFullScan here re-enumerated
+            // every provider directory + stat'd every JSONL file on EVERY
+            // popover open, even a quick 1-second toggle. FSEvents already
+            // keeps us live; we only need a manual catch-up if:
+            //   (a) we never finished a scan yet (cold start), or
+            //   (b) the popover was hidden long enough that an FSEvents
+            //       drop could plausibly have left us stale.
+            if scan == nil || hiddenFor > Self.pollIdleThreshold {
+                enqueueFullScan(force: false, showStatus: false)
+            }
+        } else {
+            popoverHiddenSince = Date()
+        }
     }
 
     public func anyProviderDirExists() -> Bool {
@@ -332,11 +366,19 @@ public final class ScanStore: ObservableObject {
         //   (2) When no provider dir exists at launch, FSEvents has
         //       nothing to watch — polling is the only way we'll notice
         //       the user's first `claude` run.
+        // When the popover has been hidden for longer than pollIdleThreshold
+        // we skip — see notifyPopoverVisibility.
         let interval = empty ? Self.pollIntervalEmpty : Self.pollIntervalReady
         pollTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
                 guard self.status != .scanning && self.status != .syncing else { return }
+                if let since = self.popoverHiddenSince,
+                   Date().timeIntervalSince(since) > Self.pollIdleThreshold,
+                   self.scan != nil {
+                    PerfLog.log("poll.skip popover-hidden-for=\(Int(Date().timeIntervalSince(since)))s")
+                    return
+                }
                 self.enqueueFullScan(force: false, showStatus: false)
             }
         }
