@@ -8,6 +8,7 @@
 
 import SwiftUI
 import AppKit
+import Combine
 
 @main
 struct CCGaugeBarApp: App {
@@ -36,6 +37,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var popover: NSPopover!
     private var settingsWindow: NSWindow?
     private let statusItemLength: CGFloat = 24
+    /// Drives the menubar tooltip refresh. Three sources push into it:
+    ///   1. `scanStore.objectWillChange` — scan completion / status /
+    ///      lastSyncedAt changes (so the cost figure and "Synced HH:MM"
+    ///      stay fresh as new JSONL arrives).
+    ///   2. `viewModel.objectWillChange` — picks up @AppStorage changes
+    ///      on `lang` / `currency` so the tooltip flips language and
+    ///      currency the moment the user toggles them in Settings,
+    ///      instead of waiting for the next scan.
+    ///   3. `tooltipTimer` — a 60s heartbeat that catches the local
+    ///      midnight rollover, which would otherwise leave yesterday's
+    ///      "Today: ..." text frozen on screen until the next scan
+    ///      happened to land. refreshTooltip is O(1) on cache hit so
+    ///      the tick is essentially free.
+    private var tooltipObservations: Set<AnyCancellable> = []
+    private var tooltipTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Pure menubar app — no Dock icon, no main window.
@@ -46,6 +62,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
         // Kick off the first scan + start file watcher in the background.
         scanStore.start()
+
+        // Tooltip refresh fan-in. We dispatch async on every source so
+        // we read post-mutation state (not the willChange snapshot).
+        //
+        // 1) ScanStore: scan / status / lastSyncedAt churn.
+        scanStore.objectWillChange.sink { [weak self] in
+            DispatchQueue.main.async { self?.refreshTooltip() }
+        }.store(in: &tooltipObservations)
+
+        // 2) PopoverViewModel: catches @AppStorage flips like lang /
+        //    currency that don't go through ScanStore but do change what
+        //    the tooltip renders. Without this, switching language in
+        //    Settings would only re-localize the tooltip after the next
+        //    scan landed.
+        viewModel.objectWillChange.sink { [weak self] in
+            DispatchQueue.main.async { self?.refreshTooltip() }
+        }.store(in: &tooltipObservations)
+
+        // 3) Midnight rollover safety net. todayStats is cached on
+        //    (scanKey, dayKey) so this tick is O(1) on cache hit. On the
+        //    first tick after local midnight, dayKey changes, the cache
+        //    invalidates, and the tooltip flips from yesterday's totals
+        //    to a fresh (cost=0, turns=0) for the new day until the next
+        //    scan picks up records dated past midnight.
+        tooltipTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async { self?.refreshTooltip() }
+        }
+        refreshTooltip()
     }
 
     // MARK: status item
@@ -67,9 +111,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             button.action = #selector(statusItemClicked(_:))
             button.target = self
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            // Initial tooltip — replaced by refreshTooltip() once scan starts.
             button.toolTip = "ccgauge-bar"
             button.frame.size.width = statusItemLength
         }
+    }
+
+    /// Updates the menubar tooltip with today's totals + last sync time.
+    /// The expensive linear pass is cached on `PopoverViewModel.todayStats`
+    /// keyed by scan generation, so this method itself is O(1) on the
+    /// common path (only the first call after a scan completes pays the
+    /// O(N) cost). Localized to the user's chosen language.
+    private func refreshTooltip() {
+        guard let button = statusItem.button else { return }
+        let brand = "ccgauge-bar"
+
+        guard scanStore.scan != nil else {
+            button.toolTip = "\(brand) · \(L10n.t("footer.syncing", lang: viewModel.lang))"
+            return
+        }
+
+        let (costToday, turnsToday) = viewModel.todayStats
+        let syncedAt = scanStore.lastSyncedAt.map { Format.hhmm($0) } ?? "—"
+
+        let lang = L10n.resolve(viewModel.lang)
+        let unit = L10n.t("provider.turns_unit", lang: viewModel.lang)
+        let synced = L10n.t("footer.synced", lang: viewModel.lang)
+        // Today-prefix kept short so the tooltip fits on a typical menubar.
+        let todayPrefix = (lang == .zh) ? "今日" : "Today"
+        button.toolTip = "\(brand) · \(todayPrefix) \(Format.money(costToday, currency: viewModel.currency))"
+            + " · \(turnsToday) \(unit) · \(synced) \(syncedAt)"
     }
 
     private func makeGaugeMenubarImage(size: CGFloat = 18, stroke: CGFloat = 1.8) -> NSImage {

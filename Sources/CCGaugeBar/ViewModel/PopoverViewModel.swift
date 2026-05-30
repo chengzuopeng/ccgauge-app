@@ -522,6 +522,61 @@ public final class PopoverViewModel: ObservableObject {
                              rows: rows)
     }
 
+    // MARK: - Menubar tooltip stats — today's cost + turn count
+
+    /// Lightweight cache that's recomputed only when the underlying scan
+    /// generation OR the local calendar day changes. The menubar tooltip
+    /// subscribes to `scanStore.objectWillChange` which fires multiple
+    /// times per scan (status / scan / lastSyncedAt each publish separately);
+    /// without this, refreshTooltip would walk ~20k records per emission,
+    /// calling `costOfRecord` (regex-driven pricing lookup) for each one.
+    ///
+    /// The `dayKey` axis matters because "today" rolls over at local
+    /// midnight: yesterday's cached (cost, turns) MUST stop being served
+    /// even if no new scan has happened since. The menubar app delegate
+    /// fires a 60s safety-net refreshTooltip tick that lands here and
+    /// invalidates this cache the first time after midnight.
+    private struct TodayStatsCache {
+        let scanKey: Date?
+        let dayKey: String
+        let cost: Double
+        let turns: Int
+    }
+    private var _todayCache: TodayStatsCache?
+
+    /// (cost, turns) for the local-midnight-to-now window across all
+    /// providers. Independent of the user's chosen source / range —
+    /// that's what makes it cacheable on (scan generation, day) alone.
+    public var todayStats: (cost: Double, turns: Int) {
+        let scanKey = scanStore.scan?.stats.scannedAt
+        let dayKey = Self.currentDayKey()
+        if let cache = _todayCache, cache.scanKey == scanKey, cache.dayKey == dayKey {
+            return (cache.cost, cache.turns)
+        }
+        let dates = rangeToDates(.d1)
+        var cost: Double = 0
+        for r in allRecords {
+            if let f = dates.from, r.timestamp < f { continue }
+            cost += costOfRecord(r).total
+        }
+        var turns = 0
+        for t in allTurnRows {
+            if let f = dates.from, t.timestamp < f { continue }
+            turns += 1
+        }
+        _todayCache = TodayStatsCache(scanKey: scanKey, dayKey: dayKey, cost: cost, turns: turns)
+        return (cost, turns)
+    }
+
+    /// `yyyy-MM-dd` in the user's *current* time zone. Used purely as a
+    /// cache discriminator — equality semantics, never displayed. We use
+    /// `Calendar.current` so it stays in sync with `rangeToDates(.d1)`,
+    /// which derives today's start from the same calendar.
+    private static func currentDayKey() -> String {
+        let comps = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        return "\(comps.year ?? 0)-\(comps.month ?? 0)-\(comps.day ?? 0)"
+    }
+
     // MARK: - Provider configured (cached per-process; rarely changes)
 
     /// Whether the provider has at least one of its data dirs on disk.
