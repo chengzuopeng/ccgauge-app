@@ -308,7 +308,7 @@ struct UsagePage: View {
                 do {
                     try csv.write(to: url, atomically: true, encoding: .utf8)
                 } catch {
-                    PerfLog.log("export.csv.error \(error)")
+                    PerfLog.logError("export.csv.error", error)
                 }
                 await MainActor.run {
                     self.isExporting = false

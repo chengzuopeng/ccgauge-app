@@ -197,7 +197,7 @@ public final class ScanStore: ObservableObject {
         } catch {
             lastError = "\(error)"
             status = .error("\(error)")
-            PerfLog.log("scan.error \(error)")
+            PerfLog.logError("scan.error", error)
         }
     }
 
@@ -209,7 +209,7 @@ public final class ScanStore: ObservableObject {
         } catch {
             lastError = "\(error)"
             status = .error("\(error)")
-            PerfLog.log("scan.reconcile.error \(error)")
+            PerfLog.logError("scan.reconcile.error", error)
         }
     }
 

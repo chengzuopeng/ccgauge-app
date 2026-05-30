@@ -60,7 +60,7 @@ enum ScanIndexPersistence {
         } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
             return [:]
         } catch {
-            PerfLog.log("index.load.error \(error)")
+            PerfLog.logError("index.load.error", error)
             return [:]
         }
     }
@@ -90,7 +90,7 @@ enum ScanIndexPersistence {
             }
             PerfLog.log("index.save files=\(files.count)")
         } catch {
-            PerfLog.log("index.save.error \(error)")
+            PerfLog.logError("index.save.error", error)
         }
     }
 
