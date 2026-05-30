@@ -13,6 +13,17 @@ public enum Format {
         f.minimumFractionDigits = 2
         f.maximumFractionDigits = 2
         f.usesGroupingSeparator = true
+        // Pin the separators explicitly instead of trusting the locale to
+        // supply them. en_US_POSIX is the POSIX *invariant* locale, which
+        // by spec has NO grouping separator — newer Foundation
+        // (swift-foundation) honours that and silently drops the thousands
+        // comma, so "1234.57" came out without the "," and broke the money
+        // formatting on CI's newer toolchain while still passing on older
+        // ones. Explicit properties take precedence over the locale, so the
+        // output is now "$1,234.57" on every Foundation version.
+        f.groupingSeparator = ","
+        f.groupingSize = 3
+        f.decimalSeparator = "."
         f.locale = Locale(identifier: "en_US_POSIX")
         return f
     }()
