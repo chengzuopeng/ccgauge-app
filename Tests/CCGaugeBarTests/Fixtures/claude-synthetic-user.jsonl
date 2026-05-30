@@ -1,0 +1,5 @@
+{"type":"user","uuid":"sys1","parentUuid":null,"timestamp":"2026-05-20T10:00:00.000Z","sessionId":"s1","cwd":"/p","message":{"role":"user","content":"<system-reminder>\nTask tools haven't been used recently.\n</system-reminder>"}}
+{"type":"user","uuid":"sys2","parentUuid":"sys1","timestamp":"2026-05-20T10:00:01.000Z","sessionId":"s1","cwd":"/p","message":{"role":"user","content":"Base directory for this skill: /some/path"}}
+{"type":"user","uuid":"u-real","parentUuid":"sys2","timestamp":"2026-05-20T10:00:02.000Z","sessionId":"s1","cwd":"/p","message":{"role":"user","content":"hey help me debug"}}
+{"type":"assistant","uuid":"a1","parentUuid":"u-real","timestamp":"2026-05-20T10:00:03.000Z","sessionId":"s1","requestId":"r1","cwd":"/p","message":{"id":"m1","model":"claude-opus-4-7","content":[{"type":"text","text":"sure!"}],"usage":{"input_tokens":10,"output_tokens":5}}}
+{"type":"assistant","uuid":"a2","parentUuid":"a1","timestamp":"2026-05-20T10:00:04.000Z","sessionId":"s1","requestId":"r2","cwd":"/p","message":{"id":"m2","model":"claude-opus-4-7","content":[{"type":"tool_use","id":"t1","name":"Grep","input":{}}],"usage":{"input_tokens":15,"output_tokens":8}}}

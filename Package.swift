@@ -23,7 +23,12 @@ let package = Package(
         .testTarget(
             name: "CCGaugeBarTests",
             dependencies: ["CCGaugeBar"],
-            path: "Tests/CCGaugeBarTests"
+            path: "Tests/CCGaugeBarTests",
+            resources: [
+                // JSONL fixtures for parser / dedup / turn tests. Loaded
+                // via Bundle.module.url(forResource:withExtension:subdirectory:).
+                .copy("Fixtures")
+            ]
         )
     ]
 )
