@@ -90,8 +90,13 @@ struct TrendChartView: View {
             Rectangle().fill(Color.clear)
         } else {
             let h = (v / maxValue).clamped(to: 0...1)
+            // Floor to 2pt so a very small bucket still draws — otherwise
+            // the first-day-of-use case (e.g. one turn at 100 tokens vs.
+            // a peak of 10M) rounds the bar to zero pixels and looks
+            // identical to the .zero state.
+            let renderedHeight = max(2, CGFloat(h) * 78)
             barFill(for: b)
-                .frame(height: CGFloat(h) * 78)
+                .frame(height: renderedHeight)
                 .clipShape(RoundedCorners(radius: 2, corners: [.topLeft, .topRight]))
         }
     }
@@ -215,6 +220,8 @@ private struct MetricToggle: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(Text(label))
+        .accessibilityAddTraits(active ? [.isButton, .isSelected] : .isButton)
     }
 }
 

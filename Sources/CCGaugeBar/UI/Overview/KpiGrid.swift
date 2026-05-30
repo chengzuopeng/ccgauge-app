@@ -122,5 +122,11 @@ private struct KpiCard: View {
                 .strokeBorder(Theme.border, lineWidth: 1)
         )
         .onHover { hovered = $0 }
+        // Collapse the title / main number / sub into one VoiceOver string
+        // so users hear "Token 总量: 1.2M, 192 轮对话" in one breath
+        // instead of three separate elements.
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text(title))
+        .accessibilityValue(Text(main))
     }
 }

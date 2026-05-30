@@ -85,10 +85,14 @@ private struct DistList: View {
                 .foregroundStyle(Theme.textPrimary)
             Spacer()
             HStack(spacing: 0) {
-                sortBtn(MoneyIcon(size: 11, active: sortMode == .cost), sortMode == .cost) {
+                sortBtn(MoneyIcon(size: 11, active: sortMode == .cost),
+                        sortMode == .cost,
+                        accessibilityLabel: L10n.t("settings.data.sort.cost", lang: lang)) {
                     sortMode = .cost
                 }
-                sortBtn(HashIcon(size: 11, active: sortMode == .token), sortMode == .token) {
+                sortBtn(HashIcon(size: 11, active: sortMode == .token),
+                        sortMode == .token,
+                        accessibilityLabel: L10n.t("settings.data.sort.token", lang: lang)) {
                     sortMode = .token
                 }
             }
@@ -98,7 +102,10 @@ private struct DistList: View {
         }
     }
 
-    private func sortBtn<V: View>(_ icon: V, _ active: Bool, action: @escaping () -> Void) -> some View {
+    private func sortBtn<V: View>(_ icon: V,
+                                  _ active: Bool,
+                                  accessibilityLabel: String,
+                                  action: @escaping () -> Void) -> some View {
         Button(action: action) {
             icon
                 .foregroundStyle(active ? Theme.textPrimary : Theme.textTertiary)
@@ -112,6 +119,8 @@ private struct DistList: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(Text(accessibilityLabel))
+        .accessibilityAddTraits(active ? [.isButton, .isSelected] : .isButton)
     }
 
     @ViewBuilder

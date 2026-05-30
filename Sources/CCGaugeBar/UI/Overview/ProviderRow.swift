@@ -117,6 +117,25 @@ private struct ProviderCard: View {
         }
         .buttonStyle(.plain)
         .onHover { hovered = $0 }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(accessibilityDescription))
+        .accessibilityAddTraits(active ? [.isButton, .isSelected] : .isButton)
+    }
+
+    /// Single-string description for VoiceOver: name + status. Reuses the
+    /// same L10n keys the visible subtitle uses so VoiceOver and screen
+    /// readers hear what sighted users see (in the user's chosen language),
+    /// instead of the hardcoded English we had before.
+    private var accessibilityDescription: String {
+        if !configured {
+            return "\(label) · \(L10n.t("provider.unconfigured", lang: lang))"
+        }
+        if turns == 0 {
+            return "\(label) · \(L10n.t("provider.no_activity", lang: lang))"
+        }
+        let unit = L10n.t("provider.turns_unit", lang: lang)
+        let minsSuffix = minutes > 0 ? " · \(Format.minutes(minutes))" : ""
+        return "\(label) · \(turns) \(unit)\(minsSuffix)"
     }
 
     private var cardBg: Color {

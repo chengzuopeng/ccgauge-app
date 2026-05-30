@@ -37,6 +37,10 @@ struct HeaderView: View {
                 }
             }
             .buttonStyle(SecondaryIconButtonStyle())
+            .accessibilityLabel(Text(viewModel.t("header.detail")))
+            .accessibilityHint(Text(L10n.resolve(viewModel.lang) == .zh
+                                     ? "在浏览器中打开 ccgauge 看板"
+                                     : "Open ccgauge dashboard in browser"))
 
             // ⚙
             Button(action: onSettings) { GearIcon(size: 14) }
@@ -114,6 +118,8 @@ struct PageToggle: View {
         }
         .buttonStyle(.plain)
         .onHover { if $0 { hoveredTab = id } else if hoveredTab == id { hoveredTab = nil } }
+        .accessibilityLabel(Text(label))
+        .accessibilityAddTraits(active ? [.isButton, .isSelected] : .isButton)
     }
 }
 

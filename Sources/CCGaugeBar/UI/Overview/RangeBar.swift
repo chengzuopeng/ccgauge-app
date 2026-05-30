@@ -42,6 +42,8 @@ struct RangeSegment: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(Text(r.displayLabel(lang: lang)))
+                .accessibilityAddTraits(range == r ? [.isButton, .isSelected] : .isButton)
             }
         }
         .padding(2)
@@ -93,6 +95,8 @@ struct SourceMenu: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
+        .accessibilityLabel(Text(L10n.resolve(lang) == .zh ? "数据源" : "Data source"))
+        .accessibilityValue(Text(source.displayLabel(lang: lang)))
     }
 
     @ViewBuilder
