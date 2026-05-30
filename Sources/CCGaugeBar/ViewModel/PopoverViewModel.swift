@@ -508,14 +508,12 @@ public final class PopoverViewModel: ObservableObject {
         if query.isEmpty {
             searched = base
         } else {
+            // Single O(L) substring search against the pre-lowercased haystack
+            // built when the row was constructed. Previously this filtered
+            // five Strings per row with localizedCaseInsensitiveContains,
+            // which lowercases its operand on every keystroke.
             let needle = query.lowercased()
-            searched = base.filter { row in
-                row.userText.localizedCaseInsensitiveContains(needle)
-                    || row.cwd.localizedCaseInsensitiveContains(needle)
-                    || row.sessionId.localizedCaseInsensitiveContains(needle)
-                    || row.models.contains { $0.localizedCaseInsensitiveContains(needle) }
-                    || row.toolNames.contains { $0.localizedCaseInsensitiveContains(needle) }
-            }
+            searched = base.filter { $0.searchHaystack.contains(needle) }
         }
 
         let rows = sortAsc ? Array(searched.reversed()) : searched

@@ -62,6 +62,12 @@ public struct UsageTurnRow: Sendable, Hashable, Identifiable {
     public let userText: String         // turn root UserRecord.textPreview
     public let source: ProviderId       // first child's source (a turn never crosses providers)
     public let children: [UsageCallRow] // sorted asc by timestamp
+    /// Pre-lowercased concatenation of every field the usage-page search
+    /// box can match against (userText / cwd / sessionId / models / tools).
+    /// Computed once when the row is built so each keystroke is a single
+    /// O(L) `contains` rather than five `localizedCaseInsensitiveContains`
+    /// calls that each lowercase their operand fresh.
+    public let searchHaystack: String
 
     public var id: String { turnId }
 }
@@ -181,6 +187,19 @@ public enum Serialize {
 
             let durationMs = max(0, Int(last.timestamp.timeIntervalSince(first.timestamp) * 1000))
             let userRec = userByUuid[turnId]
+            let userText = userRec?.textPreview ?? ""
+
+            // Precompute the search haystack — see field doc on UsageTurnRow.
+            // Joined with a space so adjacent fields don't yield false hits
+            // (e.g. project "foo" + session "barbaz" shouldn't match "obar").
+            var haystackParts: [String] = []
+            haystackParts.reserveCapacity(5)
+            if !userText.isEmpty { haystackParts.append(userText) }
+            if !first.cwd.isEmpty { haystackParts.append(first.cwd) }
+            if !first.sessionId.isEmpty { haystackParts.append(first.sessionId) }
+            haystackParts.append(contentsOf: modelsInOrder)
+            haystackParts.append(contentsOf: toolsInOrder)
+            let searchHaystack = haystackParts.joined(separator: " ").lowercased()
 
             turns.append(UsageTurnRow(
                 turnId: turnId,
@@ -206,9 +225,10 @@ public enum Serialize {
                 costCacheWrite: costCacheWrite,
                 toolNames: toolsInOrder,
                 efforts: effortsInOrder,
-                userText: userRec?.textPreview ?? "",
+                userText: userText,
                 source: first.source,
-                children: children
+                children: children,
+                searchHaystack: searchHaystack
             ))
         }
 
