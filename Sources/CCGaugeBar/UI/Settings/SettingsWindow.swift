@@ -245,6 +245,17 @@ private struct DataTab: View {
 
 private struct AboutTab: View {
     @ObservedObject var viewModel: PopoverViewModel
+    @State private var updateState: UpdateState = .idle
+
+    private enum UpdateState: Equatable {
+        case idle
+        case checking
+        case current
+        case available(version: String, url: URL)
+        case error(String)
+    }
+
+    private static let repoURL = "https://github.com/\(UpdateChecker.repoOwner)/\(UpdateChecker.repoName)"
 
     var body: some View {
         VStack(spacing: 4) {
@@ -275,25 +286,104 @@ private struct AboutTab: View {
 
             HStack(spacing: 8) {
                 AboutLink(title: viewModel.t("settings.about.github"),
-                          url: "https://github.com/")
+                          url: Self.repoURL)
                 Text("·").foregroundStyle(Theme.textQuaternary)
                 AboutLink(title: viewModel.t("settings.about.issues"),
-                          url: "https://github.com/")
+                          url: "\(Self.repoURL)/issues")
                 Text("·").foregroundStyle(Theme.textQuaternary)
                 AboutLink(title: viewModel.t("settings.about.privacy_link"),
-                          url: "https://example.com/privacy")
+                          url: "\(Self.repoURL)/blob/main/PRIVACY.md")
                 Text("·").foregroundStyle(Theme.textQuaternary)
-                Button(viewModel.t("settings.about.check_update")) {
-                    // v1.1 placeholder
-                }
-                .buttonStyle(.link)
-                .foregroundStyle(Theme.indigo)
-                .font(Theme.text(11))
+                Button(checkUpdateLabel) { checkForUpdate() }
+                    .buttonStyle(.link)
+                    .foregroundStyle(checkUpdateColor)
+                    .font(Theme.text(11))
+                    .disabled(updateState == .checking)
             }
             .padding(.top, 14)
+
+            // Status row beneath the link cluster. Empty layout slot when
+            // idle so the link row doesn't visually shift when state changes.
+            updateStatusRow
+                .frame(minHeight: 14)
+                .padding(.top, 6)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.top, 8)
+    }
+
+    // Localized label that doubles as a status hint.
+    private var checkUpdateLabel: String {
+        switch updateState {
+        case .checking: return L10n.t("footer.syncing", lang: viewModel.lang)
+        default:        return viewModel.t("settings.about.check_update")
+        }
+    }
+
+    private var checkUpdateColor: Color {
+        updateState == .checking ? Theme.textTertiary : Theme.indigo
+    }
+
+    @ViewBuilder
+    private var updateStatusRow: some View {
+        switch updateState {
+        case .idle, .checking:
+            EmptyView()
+        case .current:
+            Text(currentText)
+                .font(Theme.text(11))
+                .foregroundStyle(Theme.textTertiary)
+        case .available(let version, let url):
+            HStack(spacing: 6) {
+                Text(availableText(version: version))
+                    .font(Theme.text(11, weight: .medium))
+                    .foregroundStyle(Theme.success)
+                Button(downloadText) {
+                    NSWorkspace.shared.open(url)
+                }
+                .buttonStyle(.link)
+                .foregroundStyle(Theme.indigo)
+                .font(Theme.text(11, weight: .medium))
+            }
+        case .error(let msg):
+            Text("\(errorText): \(msg)")
+                .font(Theme.text(11))
+                .foregroundStyle(Theme.danger)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+    }
+
+    private var currentText: String {
+        L10n.resolve(viewModel.lang) == .zh ? "已是最新版本" : "You're up to date"
+    }
+    private func availableText(version: String) -> String {
+        L10n.resolve(viewModel.lang) == .zh
+            ? "新版本 \(version) 可用"
+            : "Version \(version) is available"
+    }
+    private var downloadText: String {
+        L10n.resolve(viewModel.lang) == .zh ? "前往下载" : "Download"
+    }
+    private var errorText: String {
+        L10n.resolve(viewModel.lang) == .zh ? "检查失败" : "Check failed"
+    }
+
+    private func checkForUpdate() {
+        updateState = .checking
+        Task {
+            let result = await UpdateChecker.check()
+            await MainActor.run {
+                switch result {
+                case .current:
+                    updateState = .current
+                case .available(let latest, let url):
+                    updateState = .available(version: latest, url: url)
+                case .error(let msg):
+                    updateState = .error(msg)
+                }
+            }
+        }
     }
 
     private func macOSDescription() -> String {
