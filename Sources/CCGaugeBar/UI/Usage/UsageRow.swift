@@ -118,7 +118,7 @@ struct UsageRowView: View {
 
     private var detail: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // 8-cell horizontal strip
+            // 7-cell horizontal strip
             HStack(alignment: .top, spacing: 0) {
                 detailCell("row.duration", value: Format.seconds(turn.durationMs / 1000))
                 detailCell("row.calls", value: "\(turn.callCount)", divider: true)
@@ -130,7 +130,6 @@ struct UsageRowView: View {
                            divider: true)
                 detailCell("row.cost", value: Format.money(turn.cost, currency: currency),
                            accent: Theme.success, divider: true)
-                toolsCell
             }
 
             // Full prompt
@@ -181,40 +180,6 @@ struct UsageRowView: View {
                     .foregroundStyle(accent)
             }
             .padding(.trailing, 14)
-        }
-    }
-
-    private var toolsCell: some View {
-        HStack(alignment: .top, spacing: 0) {
-            Rectangle().fill(Theme.border).frame(width: 1)
-                .padding(.trailing, 14)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(t("row.tools"))
-                    .font(Theme.text(9.5, weight: .semibold))
-                    .kerning(0.6)
-                    .textCase(.uppercase)
-                    .foregroundStyle(Theme.textTertiary)
-                if turn.toolNames.isEmpty {
-                    Text("—").font(Theme.text(13)).foregroundStyle(Theme.textTertiary)
-                } else {
-                    HStack(spacing: 4) {
-                        ForEach(turn.toolNames.prefix(6), id: \.self) { name in
-                            Text(name)
-                                .font(Theme.mono(10, weight: .medium))
-                                .foregroundStyle(Theme.indigoStrong)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 1)
-                                .background(Theme.indigoBgSoft)
-                                .clipShape(RoundedRectangle(cornerRadius: 4))
-                        }
-                        if turn.toolNames.count > 6 {
-                            Text("+\(turn.toolNames.count - 6)")
-                                .font(Theme.mono(10, weight: .medium))
-                                .foregroundStyle(Theme.textTertiary)
-                        }
-                    }
-                }
-            }
         }
     }
 

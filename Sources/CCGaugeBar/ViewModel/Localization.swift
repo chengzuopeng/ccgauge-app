@@ -91,7 +91,6 @@ public enum L10n {
         "row.cache_read": "缓存读",
         "row.cache_write": "缓存写",
         "row.cost": "花费",
-        "row.tools": "工具",
         "row.full_prompt": "完整提示",
 
         // Token tip
@@ -235,7 +234,6 @@ public enum L10n {
         "row.cache_read": "Cache R",
         "row.cache_write": "Cache W",
         "row.cost": "Cost",
-        "row.tools": "Tools",
         "row.full_prompt": "Full prompt",
 
         "tip.title": "Token Breakdown",
