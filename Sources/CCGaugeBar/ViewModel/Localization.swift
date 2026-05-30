@@ -44,8 +44,8 @@ public enum L10n {
         "kpi.cost_est": "预估费用",
         "kpi.saved": "节省 %@",
         "kpi.io_token": "I/O Token",
-        "kpi.in": "输入",
-        "kpi.out": "输出",
+        "kpi.in": "I",
+        "kpi.out": "O",
         "kpi.cache_token": "缓存 Token",
         "kpi.hit": "命中",
 
@@ -188,8 +188,8 @@ public enum L10n {
         "kpi.cost_est": "Est. Cost",
         "kpi.saved": "saved %@",
         "kpi.io_token": "I/O Tokens",
-        "kpi.in": "in",
-        "kpi.out": "out",
+        "kpi.in": "I",
+        "kpi.out": "O",
         "kpi.cache_token": "Cache",
         "kpi.hit": "hit",
 
