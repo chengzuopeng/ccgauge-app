@@ -28,6 +28,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Pin the toolchain to the newest Xcode installed on the runner so the
+      # Swift version matches local dev (Swift 6). Without this, CI used the
+      # image-default Xcode (Swift 5), whose concurrency diagnostics rejected
+      # closures that compiled fine locally — the classic "passes locally,
+      # fails in CI". `ls | sort -V | tail -1` always resolves to a path that
+      # exists, so it self-heals across GitHub image updates instead of
+      # breaking when a hardcoded Xcode_X.Y.app disappears.
+      - name: Select Xcode toolchain
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+
       - name: Swift toolchain info
         run: |
           swift --version

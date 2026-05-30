@@ -311,7 +311,7 @@ public final class ScanStore: ObservableObject {
         watchedDirs = existing
         watcher?.stop()
         watcher = FileWatcher(dirs: dirs) { [weak self] paths in
-            Task { @MainActor in self?.scheduleDebouncedRescan(paths: paths) }
+            Task { @MainActor [weak self] in self?.scheduleDebouncedRescan(paths: paths) }
         }
         watcher?.start()
         // Re-pace polling: if no dirs to watch, FSEvents can't help us
@@ -370,7 +370,7 @@ public final class ScanStore: ObservableObject {
         // we skip — see notifyPopoverVisibility.
         let interval = empty ? Self.pollIntervalEmpty : Self.pollIntervalReady
         pollTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 guard let self else { return }
                 guard self.status != .scanning && self.status != .syncing else { return }
                 if let since = self.popoverHiddenSince,

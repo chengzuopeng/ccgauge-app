@@ -68,7 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         //
         // 1) ScanStore: scan / status / lastSyncedAt churn.
         scanStore.objectWillChange.sink { [weak self] in
-            DispatchQueue.main.async { self?.refreshTooltip() }
+            DispatchQueue.main.async { [weak self] in self?.refreshTooltip() }
         }.store(in: &tooltipObservations)
 
         // 2) PopoverViewModel: catches @AppStorage flips like lang /
@@ -77,7 +77,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         //    Settings would only re-localize the tooltip after the next
         //    scan landed.
         viewModel.objectWillChange.sink { [weak self] in
-            DispatchQueue.main.async { self?.refreshTooltip() }
+            DispatchQueue.main.async { [weak self] in self?.refreshTooltip() }
         }.store(in: &tooltipObservations)
 
         // 3) Midnight rollover safety net. todayStats is cached on
@@ -87,7 +87,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         //    to a fresh (cost=0, turns=0) for the new day until the next
         //    scan picks up records dated past midnight.
         tooltipTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
-            DispatchQueue.main.async { self?.refreshTooltip() }
+            DispatchQueue.main.async { [weak self] in self?.refreshTooltip() }
         }
         refreshTooltip()
     }
